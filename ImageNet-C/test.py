@@ -116,7 +116,7 @@ def eval_model(net, batch_size=256, seed=0):
     clean_loader = torch.utils.data.DataLoader(dset.ImageFolder(
         root=imagenet_clean_path,
         transform=trn.Compose([trn.Resize(256), trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)])),
-        batch_size=args.test_bs, shuffle=False, num_workers=args.prefetch, pin_memory=True)
+        batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     print('\nUsing ImageNet data')
 
