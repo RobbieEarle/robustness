@@ -24,6 +24,7 @@ print(args)
 # /////////////// Model Setup ///////////////
 
 net = models.resnet18(pretrained=True)
+net.cuda()
 
 args.prefetch = 4
 
