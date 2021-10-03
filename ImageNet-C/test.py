@@ -81,7 +81,7 @@ def show_performance(distortion_name):
         for severity in range(1, 6):
 
             curr_severity_path = os.path.join(imagenet_c_path, distortion_name, str(severity))
-            if os.path.exists(curr_path):
+            if os.path.exists(curr_severity_path):
                 n += 1
                 distorted_dataset = dset.ImageFolder(
                     root=curr_severity_path,
