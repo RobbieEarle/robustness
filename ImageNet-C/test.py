@@ -26,6 +26,9 @@ print(args)
 net = models.resnet18(pretrained=True)
 net.cuda()
 
+alexnet = models.alexnet(pretrained=True)
+alexnet.cuda()
+
 args.prefetch = 4
 
 for p in net.parameters():
@@ -67,20 +70,6 @@ def auc(errs):  # area under the distortion-error curve
         area += (errs[i] + errs[i - 1]) / 2
     area /= len(errs) - 1
     return area
-
-
-# correct = 0
-# for batch_idx, (data, target) in enumerate(clean_loader):
-#     data = V(data.cuda(), volatile=True)
-#
-#     output = net(data)
-#
-#     pred = output.data.max(1)[1]
-#     correct += pred.eq(target.cuda()).sum()
-#
-# clean_error = 1 - correct / len(clean_loader.dataset)
-# print('Clean dataset error (%): {:.2f}'.format(100 * clean_error))
-
 
 def show_performance(distortion_name):
 
@@ -159,7 +148,6 @@ distortions = [
 errors_ce_unnormalized = []
 errors_ce_normalized = []
 errors_relative_ce = []
-alexnet = models.alexnet(pretrained=True)
 for distortion_name in distortions:
     if os.path.exists('/scratch/ssd002/datasets/imagenet-c/' + distortion_name):
         print('======== Distortion: {:15s}'.format(distortion_name))
