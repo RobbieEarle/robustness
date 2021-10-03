@@ -105,8 +105,8 @@ def show_performance(distortion_name):
 
                 errs_resnet.append(1 - 1.*correct_resnet / len(distorted_dataset))
                 errs_alexnet.append(1 - 1.*correct_alexnet / len(distorted_dataset))
-        print('\t(n={}) Imagenet-c ResNet18 Errors: {}'.format(tuple(errs_resnet)))
-        print('\t(n={}) Imagenet-c AlexNet Errors: {}'.format(tuple(errs_alexnet)))
+        print('\t(n={}) Imagenet-c ResNet18 Errors: {}'.format(n, tuple(errs_resnet)))
+        print('\t(n={}) Imagenet-c AlexNet Errors: {}'.format(n, tuple(errs_alexnet)))
 
         correct_resnet = 0
         correct_alexnet = 0
