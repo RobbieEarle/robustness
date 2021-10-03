@@ -50,11 +50,14 @@ print('Model Loaded')
 
 # /////////////// Data Loader ///////////////
 
+imagenet_clean_path = "/scratch/ssd002/datasets/imagenet/val"
+imagenet_c_path = "/scratch/hdd001/home/slowe/imagenet-c"
+
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 
 clean_loader = torch.utils.data.DataLoader(dset.ImageFolder(
-    root="/scratch/ssd002/datasets/imagenet/val",
+    root=imagenet_clean_path,
     transform=trn.Compose([trn.Resize(256), trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)])),
     batch_size=args.test_bs, shuffle=False, num_workers=args.prefetch, pin_memory=True)
 
@@ -76,10 +79,12 @@ def show_performance(distortion_name):
     with torch.no_grad():
 
         for severity in range(1, 6):
-            if os.path.exists('/scratch/ssd002/datasets/imagenet-c/' + distortion_name + '/' + str(severity)):
+
+            curr_severity_path = os.path.join(imagenet_c_path, distortion_name, str(severity))
+            if os.path.exists(curr_path):
                 n += 1
                 distorted_dataset = dset.ImageFolder(
-                    root='/scratch/ssd002/datasets/imagenet-c/' + distortion_name + '/' + str(severity),
+                    root=curr_severity_path,
                     transform=trn.Compose([trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)]))
 
                 distorted_dataset_loader = torch.utils.data.DataLoader(
@@ -147,7 +152,8 @@ errors_ce_unnormalized = []
 errors_ce_normalized = []
 errors_relative_ce = []
 for distortion_name in distortions:
-    if os.path.exists('/scratch/ssd002/datasets/imagenet-c/' + distortion_name):
+    curr_dist_path = os.path.join(imagenet_c_path, distortion_name)
+    if os.path.exists(curr_dist_path):
         print('======== Distortion: {:15s}'.format(distortion_name))
         ce_unnormalized, ce_normalized, relative_ce = show_performance(distortion_name)
         errors_ce_unnormalized.append(ce_unnormalized)
