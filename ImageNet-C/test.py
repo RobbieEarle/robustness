@@ -136,9 +136,7 @@ elif args.model_name == 'densenet264':
     args.test_bs = 64
 
 elif args.model_name == 'resnet18':
-    net = models.resnet18()
-    net.load_state_dict(model_zoo.load_url('https://download.pytorch.org/models/resnet18-5c106cde.pth',
-                                           model_dir='/share/data/lang/users/dan/.torch/models'))
+    net = models.resnet18(pretrained=True)
     args.test_bs = 256
 
 elif args.model_name == 'resnet34':
@@ -207,7 +205,7 @@ mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
 
 clean_loader = torch.utils.data.DataLoader(dset.ImageFolder(
-    root="/share/data/vision-greg/ImageNet/clsloc/images/val",
+    root="/scratch/ssd002/datasets/imagenet/val",
     transform=trn.Compose([trn.Resize(256), trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)])),
     batch_size=args.test_bs, shuffle=False, num_workers=args.prefetch, pin_memory=True)
 
@@ -236,11 +234,12 @@ def auc(errs):  # area under the distortion-error curve
 
 
 def show_performance(distortion_name):
-    errs = []
 
+    errs_resnet = []
+    errs_alexnet = []
     for severity in range(1, 6):
         distorted_dataset = dset.ImageFolder(
-            root='/share/data/vision-greg/DistortedImageNet/JPEG/' + distortion_name + '/' + str(severity),
+            root='/scratch/ssd002/datasets/imagenet-c/' + distortion_name + '/' + str(severity),
             transform=trn.Compose([trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)]))
 
         distorted_dataset_loader = torch.utils.data.DataLoader(
@@ -250,15 +249,41 @@ def show_performance(distortion_name):
         for batch_idx, (data, target) in enumerate(distorted_dataset_loader):
             data = V(data.cuda(), volatile=True)
 
-            output = net(data)
+            output_resnet = net(data)
+            pred_resnet = output_resnet.data.max(1)[1]
+            correct_resnet += pred_resnet.eq(target.cuda()).sum()
 
-            pred = output.data.max(1)[1]
-            correct += pred.eq(target.cuda()).sum()
+            output_alexnet = alexnet(data)
+            pred_alexnet = output_alexnet.data.max(1)[1]
+            correct_alexnet += pred_alexnet.eq(target.cuda()).sum()
 
-        errs.append(1 - 1.*correct / len(distorted_dataset))
+        errs_resnet.append(1 - 1.*correct_resnet / len(distorted_dataset))
+        errs_alexnet.append(1 - 1.*correct_alexnet / len(distorted_dataset))
+    print('\t=Imagenet-c ResNet18 Errors:', tuple(errs_resnet))
+    print('\t=Imagenet-c AlexNet Errors:', tuple(errs_alexnet))
 
-    print('\n=Average', tuple(errs))
-    return np.mean(errs)
+    correct = 0
+    for batch_idx, (data, target) in enumerate(clean_loader):
+        data = V(data.cuda(), volatile=True)
+
+        output_resnet = net(data)
+        pred_resnet = output_resnet.data.max(1)[1]
+        correct_resnet += pred_resnet.eq(target.cuda()).sum()
+
+        output_alexnet = net(data)
+        pred_alexnet = output_alexnet.data.max(1)[1]
+        correct_alexnet += pred_alexnet.eq(target.cuda()).sum()
+
+    clean_error_resnet = 1 - correct_resnet / len(clean_loader.dataset)
+    clean_error_alexnet = 1 - correct_alexnet / len(clean_loader.dataset)
+    print('\t=Imagenet Clean ResNet18 Errors:', clean_error_resnet)
+    print('\t=Imagenet Clean AlexNet Errors:', clean_error_alexnet)
+
+
+    ce_unnormalized = np.mean(errs_resnet)
+    ce_normalized = np.sum(errs_resnet) / np.sum(errs_alexnet)
+    relative_ce = (np.sum(errs_resnet) - clean_error_resnet) / (np.sum(errs_alexnet) - clean_error_alexnet)
+    return ce_unnormalized, ce_normalized, relative_ce
 
 
 # /////////////// End Further Setup ///////////////
@@ -277,12 +302,20 @@ distortions = [
     'speckle_noise', 'gaussian_blur', 'spatter', 'saturate'
 ]
 
-error_rates = []
+errors_ce_unnormalized = []
+errors_ce_normalized = []
+errors_relative_ce = []
+alexnet = models.alexnet(pretrained=True)
 for distortion_name in distortions:
-    rate = show_performance(distortion_name)
-    error_rates.append(rate)
-    print('Distortion: {:15s}  | CE (unnormalized) (%): {:.2f}'.format(distortion_name, 100 * rate))
+    if os.path.exists('/scratch/ssd002/datasets/imagenet-c/' + distortion_name):
+        print('Distortion: {:15s}'.format(distortion_name))
+        ce_unnormalized, ce_normalized, relative_ce = show_performance(distortion_name)
+        errors_ce_unnormalized.append(ce_unnormalized)
+        errors_ce_normalized.append(ce_normalized)
+        errors_relative_ce.append(relative_ce)
+        print('\tCE (unnormalized) (%): {:.2f}  |  CE (normalized) (%): {:.2f}  |  Relative CE (%): {:.2f}'.format(
+            100 * ce_unnormalized, 100 * ce_normalized, 100 * relative_ce))
 
-
-print('mCE (unnormalized by AlexNet errors) (%): {:.2f}'.format(100 * np.mean(error_rates)))
-
+print('\nmCE (unnormalized by AlexNet errors) (%): {:.2f}'.format(100 * np.mean(errors_ce_unnormalized)))
+print('mCE (normalized by AlexNet errors) (%): {:.2f}'.format(100 * np.mean(errors_ce_normalized)))
+print('Relative mCE (%): {:.2f}'.format(100 * np.mean(errors_relative_ce)))
