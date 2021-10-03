@@ -85,30 +85,33 @@ def show_performance(distortion_name):
 
     errs_resnet = []
     errs_alexnet = []
+    n = 0
     for severity in range(1, 6):
-        distorted_dataset = dset.ImageFolder(
-            root='/scratch/ssd002/datasets/imagenet-c/' + distortion_name + '/' + str(severity),
-            transform=trn.Compose([trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)]))
+        if os.path.exists('/scratch/ssd002/datasets/imagenet-c/' + distortion_name + '/' + str(severity)):
+            n += 1
+            distorted_dataset = dset.ImageFolder(
+                root='/scratch/ssd002/datasets/imagenet-c/' + distortion_name + '/' + str(severity),
+                transform=trn.Compose([trn.CenterCrop(224), trn.ToTensor(), trn.Normalize(mean, std)]))
 
-        distorted_dataset_loader = torch.utils.data.DataLoader(
-            distorted_dataset, batch_size=args.test_bs, shuffle=False, num_workers=args.prefetch, pin_memory=True)
+            distorted_dataset_loader = torch.utils.data.DataLoader(
+                distorted_dataset, batch_size=args.test_bs, shuffle=False, num_workers=args.prefetch, pin_memory=True)
 
-        correct = 0
-        for batch_idx, (data, target) in enumerate(distorted_dataset_loader):
-            data = V(data.cuda(), volatile=True)
+            correct = 0
+            for batch_idx, (data, target) in enumerate(distorted_dataset_loader):
+                data = V(data.cuda(), volatile=True)
 
-            output_resnet = net(data)
-            pred_resnet = output_resnet.data.max(1)[1]
-            correct_resnet += pred_resnet.eq(target.cuda()).sum()
+                output_resnet = net(data)
+                pred_resnet = output_resnet.data.max(1)[1]
+                correct_resnet += pred_resnet.eq(target.cuda()).sum()
 
-            output_alexnet = alexnet(data)
-            pred_alexnet = output_alexnet.data.max(1)[1]
-            correct_alexnet += pred_alexnet.eq(target.cuda()).sum()
+                output_alexnet = alexnet(data)
+                pred_alexnet = output_alexnet.data.max(1)[1]
+                correct_alexnet += pred_alexnet.eq(target.cuda()).sum()
 
-        errs_resnet.append(1 - 1.*correct_resnet / len(distorted_dataset))
-        errs_alexnet.append(1 - 1.*correct_alexnet / len(distorted_dataset))
-    print('\t=Imagenet-c ResNet18 Errors:', tuple(errs_resnet))
-    print('\t=Imagenet-c AlexNet Errors:', tuple(errs_alexnet))
+            errs_resnet.append(1 - 1.*correct_resnet / len(distorted_dataset))
+            errs_alexnet.append(1 - 1.*correct_alexnet / len(distorted_dataset))
+    print('\t(n={}) Imagenet-c ResNet18 Errors: {}'.format(tuple(errs_resnet)))
+    print('\t(n={}) Imagenet-c AlexNet Errors: {}'.format(tuple(errs_alexnet)))
 
     correct = 0
     for batch_idx, (data, target) in enumerate(clean_loader):
@@ -124,8 +127,8 @@ def show_performance(distortion_name):
 
     clean_error_resnet = 1 - correct_resnet / len(clean_loader.dataset)
     clean_error_alexnet = 1 - correct_alexnet / len(clean_loader.dataset)
-    print('\t=Imagenet Clean ResNet18 Errors:', clean_error_resnet)
-    print('\t=Imagenet Clean AlexNet Errors:', clean_error_alexnet)
+    print('\tImagenet Clean ResNet18 Errors:', clean_error_resnet)
+    print('\tImagenet Clean AlexNet Errors:', clean_error_alexnet)
 
 
     ce_unnormalized = np.mean(errs_resnet)
