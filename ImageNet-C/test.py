@@ -96,7 +96,8 @@ def show_performance(distortion_name):
             distorted_dataset_loader = torch.utils.data.DataLoader(
                 distorted_dataset, batch_size=args.test_bs, shuffle=False, num_workers=args.prefetch, pin_memory=True)
 
-            correct = 0
+            correct_resnet = 0
+            correct_alexnet = 0
             for batch_idx, (data, target) in enumerate(distorted_dataset_loader):
                 data = V(data.cuda(), volatile=True)
 
@@ -113,7 +114,8 @@ def show_performance(distortion_name):
     print('\t(n={}) Imagenet-c ResNet18 Errors: {}'.format(tuple(errs_resnet)))
     print('\t(n={}) Imagenet-c AlexNet Errors: {}'.format(tuple(errs_alexnet)))
 
-    correct = 0
+    correct_resnet = 0
+    correct_alexnet = 0
     for batch_idx, (data, target) in enumerate(clean_loader):
         data = V(data.cuda(), volatile=True)
 
@@ -159,12 +161,12 @@ errors_relative_ce = []
 alexnet = models.alexnet(pretrained=True)
 for distortion_name in distortions:
     if os.path.exists('/scratch/ssd002/datasets/imagenet-c/' + distortion_name):
-        print('Distortion: {:15s}'.format(distortion_name))
+        print('======== Distortion: {:15s}'.format(distortion_name))
         ce_unnormalized, ce_normalized, relative_ce = show_performance(distortion_name)
         errors_ce_unnormalized.append(ce_unnormalized)
         errors_ce_normalized.append(ce_normalized)
         errors_relative_ce.append(relative_ce)
-        print('\tCE (unnormalized) (%): {:.2f}  |  CE (normalized) (%): {:.2f}  |  Relative CE (%): {:.2f}'.format(
+        print('\tCE (unnormalized) (%): {:.2f}  |  CE (normalized) (%): {:.2f}  |  Relative CE (%): {:.2f}\n'.format(
             100 * ce_unnormalized, 100 * ce_normalized, 100 * relative_ce))
 
 print('\nmCE (unnormalized by AlexNet errors) (%): {:.2f}'.format(100 * np.mean(errors_ce_unnormalized)))
